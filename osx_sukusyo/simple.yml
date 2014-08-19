@@ -1,0 +1,14 @@
+---
+
+- hosts: all
+  connection: local #localhost only
+  tasks:
+    - name: ping
+      action: ping
+
+    - name: skip
+      shell: never called
+      when: False
+
+    - name: fail
+      shell: not_exists_command do
