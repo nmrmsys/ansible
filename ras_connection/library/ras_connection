@@ -1,0 +1,119 @@
+#!/usr/bin/python
+DOCUMENTATION = '''
+---
+module: ras_connection
+short_description: control RAS/VPN Connection
+description:
+  - control RAS/VPN Connection
+options:
+  name:
+    description:
+      - connection name
+    required: true
+  userid:
+    description:
+      - connection user id
+  password:
+    description:
+      - connection password
+  state:
+    description:
+      - connection state
+  exclusives:
+    description:
+      - connecting before disconnect these connection
+notes:
+   - see https://github.com/nmrmsys/ansible/ras_connection
+author: nmrmsys@gmail.com
+'''
+
+EXAMPLES = '''
+- local_action: ras_connection name=VpnA userid=myuser password=mypass state=connected exclusives="VpnB, VpnC"
+  when: ansible_hostname | search("^pref_")
+'''
+
+class RasConnection(object):
+    def __init__(self, module):
+        self.module      = module
+        self.name        = module.params['name']
+        self.userid      = module.params['userid']
+        self.password    = module.params['password']
+        self.state       = module.params['state']
+        self.exclusives  = module.params['exclusives']
+        self.system_type = self.get_system_type()
+        self.status      = self.get_connection_status()
+        self.changed     = False
+
+    def get_system_type(self):
+        system = platform.system()
+        if "CYGWIN" in system:
+            return 'cygwin'
+        elif "Darwin" in system:
+            return 'macosx'
+        else:
+            return 'linux'
+
+    def get_connection_status(self, name=None):
+        cmd = []
+        if self.system_type == 'cygwin':
+            cmd.append(self.module.get_bin_path('RASDIAL', True))
+        (rc, out, err) = self.module.run_command(cmd)
+        if name is None:
+            name = self.name
+        if name in out:
+            return 'connected'
+        else:
+            return 'disconnected'
+
+    def set_connection_status(self, state, name=None):
+        if name is None:
+            name = self.name
+        cmd = []
+        if self.system_type == 'cygwin':
+            cmd.append(self.module.get_bin_path('RASDIAL', True))
+            cmd.append(name)
+            if state == 'connected':
+                cmd.append(self.userid)
+                cmd.append(self.password)
+            else:
+                cmd.append('/DISCONNECT')
+        (rc, out, err) = self.module.run_command(cmd)
+        self.status = self.get_connection_status()
+
+def main():
+    result = {}
+
+    module = AnsibleModule(
+        argument_spec=dict(
+            name       = dict(required=True),
+            userid     = dict(),
+            password   = dict(),
+            state      = dict(choices=['connected', 'disconnected']),
+            exclusives = dict(),
+        ),
+        supports_check_mode=True
+    )
+
+    rascon = RasConnection(module)
+
+    result['name']    = rascon.name
+    result['state']   = rascon.status
+    result['changed'] = False
+
+    if module.params['state'] is not None:
+        if module.params['state'] != rascon.status:
+            result['changed'] = True
+            if module.check_mode:
+                result['msg'] = 'changing connection state'
+            else:
+                if module.params['exclusives'] is not None and module.params['state'] == 'connected':
+                   for cn in module.params['exclusives'].split(','):
+                        cn = cn.strip()
+                        rascon.set_connection_status('disconnected', cn)
+                rascon.set_connection_status(module.params['state'])
+                result['state'] = rascon.status
+
+    module.exit_json(**result)
+
+from ansible.module_utils.basic import *
+main()

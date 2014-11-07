@@ -1,0 +1,6 @@
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+  - local_action: ras_connection name=VpnA userid=myid password=mypw state=connected exclusives="VpnB, VpnC"
+    when: ansible_hostname | search("^pref_")
