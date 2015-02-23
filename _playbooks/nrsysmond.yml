@@ -1,0 +1,6 @@
+---
+- hosts: "{{ hosts }}"
+  sudo: yes
+  tasks:
+    - action: "{{ ansible_pkg_mgr }} name=newrelic-sysmond state=latest"
+    - service: "name=newrelic-sysmond state=started"
