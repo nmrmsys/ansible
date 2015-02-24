@@ -1,4 +1,4 @@
----
+--- # usage: ansible-playbook ping.yml -e "hosts=server1"
 - hosts: '{{ hosts }}'
   tasks:
     - ping:

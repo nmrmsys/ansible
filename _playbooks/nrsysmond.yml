@@ -1,4 +1,4 @@
----
+--- # usage: ansible-playbook nrsysmond.yml -e "hosts=server1"
 - hosts: "{{ hosts }}"
   sudo: yes
   tasks:

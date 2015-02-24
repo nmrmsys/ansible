@@ -1,4 +1,4 @@
----
+--- # usage: ansible-playbook pkg.yml -e "hosts=server1 name=pkg1 state=latest"
 - hosts: "{{ hosts }}"
   sudo: yes
   tasks:
